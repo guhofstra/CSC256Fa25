@@ -8,82 +8,7 @@
 #include <unistd.h>
 #include <pthread.h>
 
-struct station {
-	int available_seats;
-	int waiting_students;
-	int next_ticket;
-	int next_student;
-	pthread_mutex_t lock;
-	pthread_cond_t bus_arrive_cond;
-	pthread_cond_t bus_loaded_cond;
-};
-
-void
-station_init(struct station *station)
-{
-	station->waiting_students = 0;
-	station->available_seats = 0;
-	station->next_ticket = 1;
-	station->next_student = 1;
-	pthread_mutex_init(&station->lock,NULL);
-	pthread_cond_init(&station->bus_arrive_cond,NULL);
-	pthread_cond_init(&station->bus_loaded_cond,NULL);
-}
-
-void 
-station_load_bus(struct station *station, int count)
-{
-    // Locking mutex
-    pthread_mutex_lock(&station->lock);
-    // Setting available seats to the count passed
-    station->available_seats = count;
-    // Notify all waiting students that the bus has arrived
-    pthread_cond_broadcast(&station->bus_arrive_cond);
-    
-    // While there are students waiting and seats available, wait
-    while(station->waiting_students > 0 && station->available_seats > 0) {
-        pthread_cond_wait(&station->bus_loaded_cond, &station->lock);
-        // Break if no more students are waiting or no seats are available
-        if (station->waiting_students == 0 || station->available_seats == 0) {
-            break;
-        }
-    }
-    // Reset seats for next bus
-    station->available_seats = 0;
-    // Unlocking mutex
-    pthread_mutex_unlock(&station->lock);
-}
-
-int
-station_wait_for_bus(struct station *station, int myticket, int myid)
-{
-	// Locking mutex
-	pthread_mutex_lock(&station->lock);
-	// Increment the waiting students number
-	station->waiting_students++;
-	// While the students ticket is not the next ticket
-	while(station->next_ticket != myticket || station->available_seats == 0)
-	{
-		pthread_cond_wait(&station->bus_arrive_cond, &station->lock);
-	}
-	// Decrement waiting students and available seats
-	station->waiting_students--;
-	station->available_seats--;
-	// Get the ticket of the next student
-	int my_board_order = station->next_student;
-	// Increment next ticket and student number
-	station->next_student++;
-	station->next_ticket++;
-	// Signal the bus is loaded
-	pthread_cond_signal(&station->bus_loaded_cond);
-	// Unlocking mutex
-	pthread_mutex_unlock(&station->lock);
-
-	return my_board_order;
-}
-
-
-//#include "hofbus.c"
+#include "hofbus.c"
 // Count of student threads that have boarded (i.e. station_wait_for_bus has returned)
 volatile int students_boarded = 0;
 
@@ -125,7 +50,7 @@ student_thread(void *arg)
 		fprintf(stderr, "Error: student has boarded in wrong order,\t"
 				"my ticket is %d, myturn is %d\n", myticket, student_boarded_sofar);
 		exit(1);
-	    }
+	}
         printf("student %d with ticket %d has boarded, the turn is %d\n", sargs->id, myticket, myturn);
         pthread_mutex_unlock(&mutex);
 		
