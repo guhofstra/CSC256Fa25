@@ -49,7 +49,12 @@ station_wait_for_bus(struct station *station, int myticket, int myid)
 	pthread_mutex_lock(&station->lock);
 	station->waiting_students++;
 
-	/* Wait until a bus with free seats is present and it's this student's turn. */
+	/* Wait until a bus with free seats is present AND it's this student's turn. */
+	/* TODO update here:
+	 * Wait until:
+	 *  - a seat is available, AND
+	 *  - either it's this student's ticket turn, OR the student is VIP (id == 5).
+	 */
 	while (myticket != station->next_student || station->available_seats == 0) {
 		pthread_cond_wait(&station->bus_arrive_cond, &station->lock);
 	}
